@@ -16,10 +16,15 @@
 #include <Qt3DExtras/QTorusMesh>
 #include <Qt3DExtras/Qt3DWindow>
 #include <Qt3DExtras/QFirstPersonCameraController>
+#include <QVector2D>
 
-#include <math.h>       /* cos */
+#include <math.h>
+#include <vector>
 
 #define PI 3.14159265
+#define MODE_ANGLE 0
+#define MODE_LINE 1
+#define MODE_INVERSE_LINE 2
 
 Qt3DCore::QEntity *createScene()
 {
@@ -94,7 +99,6 @@ void AddPoint(Qt3DCore::QEntity *root, const QVector3D &vector) {
     spherematerial->setDiffuse(QColor(Qt::white));
     spherematerial->setAmbient(QColor(Qt::white));
     Qt3DCore::QTransform *transform = new Qt3DCore::QTransform;
-//    transform->setRotationX(90);
     transform->setTranslation(vector);
 
     center_entity->addComponent(spherematerial);
@@ -102,23 +106,34 @@ void AddPoint(Qt3DCore::QEntity *root, const QVector3D &vector) {
     center_entity->addComponent(transform);
 }
 
-void AddProfile(Qt3DCore::QEntity *root, const float& x_distance, const double& angle) {
-    int total_peak{25};
-    float gap_y{2};
-    float gap_z{2};
+void AddProfile(Qt3DCore::QEntity *root, const std::vector<QVector2D>& data_set, const int& mode, const int& total_profiles) {
+    static int profile_count{0};
+    float gap_x{1};
+    float gap_y{1};
+    float gap_z{1};
 
-    float y_start_point{-(total_peak/2)*gap_y};
-    float input_z{gap_z*x_distance};
-
-    float profile_radius{y_start_point + gap_y};
-    double cos_angle{std::cos(angle*PI/180.0)};
-    double sin_angle{std::sin(angle*PI/180.0)};
-    for(int i = 0; i < total_peak; ++i) {
-        profile_radius += gap_y;
-        AddPoint(root, QVector3D(profile_radius*static_cast<float>(cos_angle),
-                                 profile_radius*static_cast<float>(sin_angle),
-                                 input_z));
+    switch (mode) {
+    case MODE_LINE: {
+        for(auto peak : data_set)
+            AddPoint(root, QVector3D(profile_count*gap_x, peak.x()*gap_y, peak.y()*gap_z));
     }
+        break;
+    case MODE_ANGLE: {
+        auto angle = (180/static_cast<double>(total_profiles))*static_cast<double>(profile_count);
+        double cos_angle{std::cos(angle*PI/180.0)};
+        double sin_angle{std::sin(angle*PI/180.0)};
+        for(auto peak : data_set) {
+            AddPoint(root, QVector3D(peak.x()*gap_x*static_cast<float>(cos_angle),
+                                     peak.x()*gap_y*static_cast<float>(sin_angle),
+                                     peak.y()*gap_z));
+        }
+    }
+        break;
+    case MODE_INVERSE_LINE: {
+    }
+        break;
+    }
+    ++profile_count;
 }
 
 int main(int argc, char* argv[])
@@ -131,7 +146,7 @@ int main(int argc, char* argv[])
     // Camera
     Qt3DRender::QCamera *camera = view.camera();
 //    camera->lens()->setPerspectiveProjection(45.0f, 16.0f/9.0f, 0.1f, 1000.0f);
-    camera->setPosition(QVector3D(0, 0, 100.0f));
+    camera->setPosition(QVector3D(0, 0, 150.0f));
     camera->setViewCenter(QVector3D(0, 0, 0));
 
     // For camera controls
@@ -141,8 +156,31 @@ int main(int argc, char* argv[])
 
     view.setRootEntity(scene);
 
-    for(int i = 0; i < 10; ++i)
-        AddProfile(scene, i*2, i*18);
+    //------------------------------------------------------------------------------------------------------------------
+    // create fake points
+    std::vector<std::vector<QVector2D>> data_set;
+    int x_data_size = 19;
+    int y_data_size = 19;
+
+    int start_peak = -(y_data_size/2);
+
+    for (int i = 0; i < x_data_size; ++i) {
+        std::vector<QVector2D> profile;
+        int peak_offset = start_peak;
+        for (int j = 0; j < y_data_size; ++j) {
+            if (j > 15 || j < 3)
+                profile.push_back(QVector2D(peak_offset++, i));
+            else
+                profile.push_back(QVector2D(peak_offset++, 0));
+        }
+        data_set.push_back(profile);
+    }
+
+    for(auto data : data_set) {
+        AddProfile(scene, data, MODE_ANGLE, x_data_size);
+    }
+
+    //------------------------------------------------------------------------------------------------------------------
 
     view.show();
     return app.exec();
