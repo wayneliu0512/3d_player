@@ -159,15 +159,15 @@ int main(int argc, char* argv[])
     //------------------------------------------------------------------------------------------------------------------
     // create fake points
     std::vector<std::vector<QVector2D>> data_set;
-    int x_data_size = 19;
-    int y_data_size = 19;
+    int profile_size = 19;
+    int peak_size = 19;
 
-    int start_peak = -(y_data_size/2);
+    int start_peak = -(peak_size/2);
 
-    for (int i = 0; i < x_data_size; ++i) {
+    for (int i = 0; i < profile_size; ++i) {
         std::vector<QVector2D> profile;
         int peak_offset = start_peak;
-        for (int j = 0; j < y_data_size; ++j) {
+        for (int j = 0; j < peak_size; ++j) {
             if (j > 15 || j < 3)
                 profile.push_back(QVector2D(peak_offset++, i));
             else
@@ -176,8 +176,8 @@ int main(int argc, char* argv[])
         data_set.push_back(profile);
     }
 
-    for(auto data : data_set) {
-        AddProfile(scene, data, MODE_ANGLE, x_data_size);
+    for(auto profile : data_set) {
+        AddProfile(scene, profile, MODE_ANGLE, profile_size);
     }
 
     //------------------------------------------------------------------------------------------------------------------
