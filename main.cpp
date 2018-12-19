@@ -22,7 +22,7 @@
 #include <vector>
 
 #define PI 3.14159265
-#define MODE_ANGLE 0
+#define MODE_CIRCLE 0
 #define MODE_LINE 1
 #define MODE_INVERSE_LINE 2
 
@@ -90,14 +90,14 @@ Qt3DCore::QEntity *createScene()
     return rootEntity;
 }
 
-void AddPoint(Qt3DCore::QEntity *root, const QVector3D &vector) {
+void AddPoint(Qt3DCore::QEntity *root, const QVector3D &vector, const QColor &color) {
     // Sphere
     Qt3DCore::QEntity *center_entity = new Qt3DCore::QEntity(root);
     Qt3DExtras::QSphereMesh *sphereMesh = new Qt3DExtras::QSphereMesh;
     sphereMesh->setRadius(0.25f);
     Qt3DExtras::QPhongMaterial *spherematerial = new Qt3DExtras::QPhongMaterial;
-    spherematerial->setDiffuse(QColor(Qt::white));
-    spherematerial->setAmbient(QColor(Qt::white));
+    spherematerial->setDiffuse(color);
+    spherematerial->setAmbient(color);
     Qt3DCore::QTransform *transform = new Qt3DCore::QTransform;
     transform->setTranslation(vector);
 
@@ -108,31 +108,37 @@ void AddPoint(Qt3DCore::QEntity *root, const QVector3D &vector) {
 
 void AddProfile(Qt3DCore::QEntity *root, const std::vector<QVector2D>& data_set, const int& mode, const int& total_profiles) {
     static int profile_count{0};
-    float gap_x{1};
-    float gap_y{1};
-    float gap_z{1};
+    static int color_gradiant{0};
+    float gap_x{2};
+    float gap_y{2};
+    float gap_z{2};
+    QColor point_color(color_gradiant, color_gradiant, color_gradiant);
 
     switch (mode) {
     case MODE_LINE: {
-        for(auto peak : data_set)
-            AddPoint(root, QVector3D(profile_count*gap_x, peak.x()*gap_y, peak.y()*gap_z));
+        for (auto peak : data_set)
+            AddPoint(root, QVector3D(profile_count*gap_x, peak.x()*gap_y, peak.y()*gap_z), point_color);
     }
         break;
-    case MODE_ANGLE: {
+    case MODE_INVERSE_LINE: {
+        for (auto peak : data_set)
+            AddPoint(root, QVector3D(-profile_count*gap_x, peak.x()*gap_y, peak.y()*gap_z), point_color);
+    }
+        break;
+    case MODE_CIRCLE: {
         auto angle = (180/static_cast<double>(total_profiles))*static_cast<double>(profile_count);
         double cos_angle{std::cos(angle*PI/180.0)};
         double sin_angle{std::sin(angle*PI/180.0)};
         for(auto peak : data_set) {
             AddPoint(root, QVector3D(peak.x()*gap_x*static_cast<float>(cos_angle),
                                      peak.x()*gap_y*static_cast<float>(sin_angle),
-                                     peak.y()*gap_z));
+                                     peak.y()*gap_z), point_color);
         }
     }
         break;
-    case MODE_INVERSE_LINE: {
     }
-        break;
-    }
+
+    color_gradiant <= 255 ? color_gradiant+=14 : color_gradiant = 0 ;
     ++profile_count;
 }
 
@@ -168,16 +174,16 @@ int main(int argc, char* argv[])
         std::vector<QVector2D> profile;
         int peak_offset = start_peak;
         for (int j = 0; j < peak_size; ++j) {
-            if (j > 15 || j < 3)
+//            if (j > 15 || j < 3)
                 profile.push_back(QVector2D(peak_offset++, i));
-            else
-                profile.push_back(QVector2D(peak_offset++, 0));
+//            else
+//                profile.push_back(QVector2D(peak_offset++, 0));
         }
         data_set.push_back(profile);
     }
 
     for(auto profile : data_set) {
-        AddProfile(scene, profile, MODE_ANGLE, profile_size);
+        AddProfile(scene, profile, MODE_CIRCLE, profile_size);
     }
 
     //------------------------------------------------------------------------------------------------------------------
