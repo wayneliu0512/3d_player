@@ -106,33 +106,49 @@ void AddPoint(Qt3DCore::QEntity *root, const QVector3D &vector, const QColor &co
     center_entity->addComponent(transform);
 }
 
-void AddProfile(Qt3DCore::QEntity *root, const std::vector<QVector2D>& data_set, const int& mode, const int& total_profiles) {
+void AddProfile(Qt3DCore::QEntity *root, const std::vector<QVector2D> &data_set,
+                const int &mode, const int &total_profiles, const QVector3D &tool_offset) {
     static int profile_count{0};
     static int color_gradiant{0};
     float gap_x{2};
     float gap_y{2};
     float gap_z{2};
     QColor point_color(color_gradiant, color_gradiant, color_gradiant);
-
+    QVector3D point;
     switch (mode) {
     case MODE_LINE: {
-        for (auto peak : data_set)
-            AddPoint(root, QVector3D(profile_count*gap_x, peak.x()*gap_y, peak.y()*gap_z), point_color);
+        for (auto peak : data_set) {
+            point = {profile_count*gap_x, peak.x()*gap_y, peak.y()*gap_z};
+            point += tool_offset;
+            AddPoint(root, point, point_color);
+        }
     }
         break;
     case MODE_INVERSE_LINE: {
-        for (auto peak : data_set)
-            AddPoint(root, QVector3D(-profile_count*gap_x, peak.x()*gap_y, peak.y()*gap_z), point_color);
+        for (auto peak : data_set) {
+            point = {-profile_count*gap_x, peak.x()*gap_y, peak.y()*gap_z};
+            point += tool_offset;
+            AddPoint(root, point, point_color);
+        }
     }
         break;
     case MODE_CIRCLE: {
-        auto angle = (180/static_cast<double>(total_profiles))*static_cast<double>(profile_count);
+        auto start_angle {std::atan(static_cast<double>(tool_offset.y()/tool_offset.x())) * 180.0 / PI};
+        if (tool_offset.x() <= 0) start_angle += 180;
+        auto angle = start_angle + ((360/static_cast<double>(total_profiles))
+                     *static_cast<double>(profile_count));
         double cos_angle{std::cos(angle*PI/180.0)};
         double sin_angle{std::sin(angle*PI/180.0)};
+
+        QVector3D tool_offset_new {tool_offset.length()*static_cast<float>(cos_angle),
+                                   tool_offset.length()*static_cast<float>(sin_angle),
+                                   tool_offset.z()};
         for(auto peak : data_set) {
-            AddPoint(root, QVector3D(peak.x()*gap_x*static_cast<float>(cos_angle),
-                                     peak.x()*gap_y*static_cast<float>(sin_angle),
-                                     peak.y()*gap_z), point_color);
+            point = {peak.x()*gap_x*static_cast<float>(cos_angle),
+                    peak.x()*gap_y*static_cast<float>(sin_angle),
+                    peak.y()*gap_z};
+            point += tool_offset_new;
+            AddPoint(root, point, point_color);
         }
     }
         break;
@@ -156,13 +172,14 @@ int main(int argc, char* argv[])
     camera->setViewCenter(QVector3D(0, 0, 0));
 
     // For camera controls
-    Qt3DExtras::QFirstPersonCameraController *camController = new Qt3DExtras::QFirstPersonCameraController(scene);
+    Qt3DExtras::QFirstPersonCameraController *camController
+            = new Qt3DExtras::QFirstPersonCameraController(scene);
     camController->setCamera(camera);
     camController->setLinearSpeed(100);
 
     view.setRootEntity(scene);
 
-    //------------------------------------------------------------------------------------------------------------------
+    //----------------------------------------------------------------------------------------
     // create fake points
     std::vector<std::vector<QVector2D>> data_set;
     int profile_size = 19;
@@ -174,19 +191,17 @@ int main(int argc, char* argv[])
         std::vector<QVector2D> profile;
         int peak_offset = start_peak;
         for (int j = 0; j < peak_size; ++j) {
-//            if (j > 15 || j < 3)
                 profile.push_back(QVector2D(peak_offset++, i));
-//            else
-//                profile.push_back(QVector2D(peak_offset++, 0));
         }
         data_set.push_back(profile);
     }
 
-    for(auto profile : data_set) {
-        AddProfile(scene, profile, MODE_CIRCLE, profile_size);
-    }
+    QVector3D tool_offset{8,8,0};
 
-    //------------------------------------------------------------------------------------------------------------------
+    for(auto profile : data_set) {
+        AddProfile(scene, profile, MODE_CIRCLE, profile_size, tool_offset);
+    }
+    //----------------------------------------------------------------------------------------
 
     view.show();
     return app.exec();
