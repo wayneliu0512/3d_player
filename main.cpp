@@ -133,6 +133,7 @@ void AddProfile(Qt3DCore::QEntity *root, const std::vector<QVector2D> &data_set,
     }
         break;
     case MODE_CIRCLE: {
+
         auto start_angle {std::atan(static_cast<double>(tool_offset.y()/tool_offset.x())) * 180.0 / PI};
         if (tool_offset.x() <= 0) start_angle += 180;
         auto angle = start_angle + ((360/static_cast<double>(total_profiles))
@@ -191,12 +192,12 @@ int main(int argc, char* argv[])
         std::vector<QVector2D> profile;
         int peak_offset = start_peak;
         for (int j = 0; j < peak_size; ++j) {
-                profile.push_back(QVector2D(peak_offset++, i));
+                profile.push_back(QVector2D(peak_offset++, 0));
         }
         data_set.push_back(profile);
     }
 
-    QVector3D tool_offset{8,8,0};
+    QVector3D tool_offset{20,20,0};
 
     for(auto profile : data_set) {
         AddProfile(scene, profile, MODE_CIRCLE, profile_size, tool_offset);
