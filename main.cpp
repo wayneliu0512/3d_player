@@ -1,4 +1,4 @@
-//test for jira
+//test for jira AC-1
 #include <QGuiApplication>
 
 #include <Qt3DCore/QEntity>
